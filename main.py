@@ -1,24 +1,28 @@
 import os
 import asyncio
-import logging
+from aiohttp import web
 from aiogram import Bot, Dispatcher
-from handlers import router
 
+# Render bergan PORT'ni olish
+PORT = int(os.environ.get("PORT", 8080))
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8668763966:AAGOSeYgbeWGwsv-nRFtfONwpPCSMvIAwLM")
+async def handle(request):
+    return web.Response(text="Bot is running!")
+
+async def start_dummy_server():
+    app = web.Application()
+    app.router.add_get("/", handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
 
 async def main():
-    logging.basicConfig(level=logging.INFO)
+    # Soxta web serverni orqa fonda ishga tushirish
+    await start_dummy_server()
     
-    bot = Bot(token=BOT_TOKEN)
-    dp = Dispatcher()
-    
-  
-    dp.include_router(router)
-    
-    
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    # Botingizning odatiy polling qismi
+    # await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    asyncio.run(main())  
+    asyncio.run(main())
