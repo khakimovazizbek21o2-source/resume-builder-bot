@@ -4,15 +4,13 @@ import logging
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 
-# Botingizning mavjud importlari va sozlamalari (bot, dp, routerlar)
+# Botingiz ob'ektlari (bot, dp) shu yerda bo'lishi kerak
 # ...
 
-# Render taqdim etadigan PORT'ni olish (bo'lmasa 8080)
-PORT = int(os.environ.get("PORT", 8080))
+PORT = int(os.environ.get("PORT", 10000))
 
-# Render portni skaner qilganda javob qaytaruvchi funksiya
 async def handle_ping(request):
-    return web.Response(text="Bot is live and running!")
+    return web.Response(text="Bot is live!")
 
 async def start_dummy_server():
     app = web.Application()
@@ -26,11 +24,11 @@ async def start_dummy_server():
     logging.info(f"Dummy HTTP server started on port {PORT}")
 
 async def main():
-    # 1. Port muammosini hal qilish uchun web serverni ishga tushiramiz
+    # 1. Soxta web serverni orqa fonda yoqamiz
     await start_dummy_server()
     
-    # 2. Telegram bot pollingini boshlaymiz
-    # await dp.start_polling(bot)  <-- Botingizning mavjud polling kodi
+    # 2. BOT POLLING (MUHIM: Bu qator async jarayonni to'xtatmay ushlab turadi)
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
