@@ -4,8 +4,13 @@ import logging
 from aiohttp import web
 from aiogram import Bot, Dispatcher
 
-# Botingiz ob'ektlari (bot, dp) shu yerda bo'lishi kerak
-# ...
+# 1. BOT VA DISPATCHER'NI SHU YERDA SHUNDAY E'LON QILING (YOKI IMPORT QILING)
+TOKEN = os.getenv("BOT_TOKEN", "YOUR_BOT_TOKEN")
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+# Router va handlerlarni ulaymiz (agar bo'lsa)
+# dp.include_router(...)
 
 PORT = int(os.environ.get("PORT", 10000))
 
@@ -24,10 +29,8 @@ async def start_dummy_server():
     logging.info(f"Dummy HTTP server started on port {PORT}")
 
 async def main():
-    # 1. Soxta web serverni orqa fonda yoqamiz
     await start_dummy_server()
-    
-    # 2. BOT POLLING (MUHIM: Bu qator async jarayonni to'xtatmay ushlab turadi)
+    # Endi dp topiladi!
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
