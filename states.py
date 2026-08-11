@@ -1,11 +1,17 @@
-from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.state import StatesGroup, State
 
 class ResumeForm(StatesGroup):
-    full_name = State()   # F.I.SH
-    phone = State()       # Telefon raqami
-    email = State()       # Email
-    education = State()   # Ta'lim
-    skills = State()      # Ko'nikmalar
-    experience = State()  # Ish tajribasi
-    photo = State()       # 📸 Rasm (Photo)
-    confirm = State()     # Tasdiqlash
+    full_name = State()
+    profession = State()
+    phone = State()
+    email = State()
+    salary = State()
+    education = State()
+    skills = State()
+    languages = State()
+    exp_company = State()
+    exp_position = State()
+    exp_period = State()
+    exp_duties = State()
+    photo = State()
+    confirm = State()

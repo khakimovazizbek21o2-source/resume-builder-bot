@@ -17,9 +17,10 @@ router = Router()
 # ==================== KLAVIATURALAR ==================== #
 
 def get_step_keyboard(can_skip: bool = False):
-    buttons = [[KeyboardButton(text="⬅️ Orqaga")]]
+    buttons = []
     if can_skip:
-        buttons[0].append(KeyboardButton(text="⏭ O'tkazib yuborish"))
+        buttons.append([KeyboardButton(text="⏭ O'tkazib yuborish")])
+    buttons.append([KeyboardButton(text="⬅️ Orqaga")])
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 def get_phone_keyboard():
@@ -65,38 +66,68 @@ async def cmd_start(message: types.Message, state: FSMContext):
 async def go_back(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     
-    if current_state == ResumeForm.phone:
-        await message.answer("<b>To'liq ism-familiyangizni</b> kiriting:", parse_mode="HTML", reply_markup=ReplyKeyboardRemove())
+    if current_state == ResumeForm.profession:
+        await message.answer("To'liq ism-familiyangizni kiriting:", reply_markup=ReplyKeyboardRemove())
         await state.set_state(ResumeForm.full_name)
+    elif current_state == ResumeForm.phone:
+        await message.answer("Kasbingiz yoki mutaxassisligingizni kiriting:", reply_markup=get_step_keyboard())
+        await state.set_state(ResumeForm.profession)
     elif current_state == ResumeForm.email:
         await message.answer("Telefon raqamingizni kiriting:", reply_markup=get_phone_keyboard())
         await state.set_state(ResumeForm.phone)
-    elif current_state == ResumeForm.education:
+    elif current_state == ResumeForm.salary:
         await message.answer("Email manzilingizni kiriting:", reply_markup=get_step_keyboard())
         await state.set_state(ResumeForm.email)
+    elif current_state == ResumeForm.education:
+        await message.answer("Kutilayotgan oylik maoshni kiriting:", reply_markup=get_step_keyboard(can_skip=True))
+        await state.set_state(ResumeForm.salary)
     elif current_state == ResumeForm.skills:
-        await message.answer("Ma'lumotingiz (Universitet/Kollej) haqida yozing:", reply_markup=get_step_keyboard())
+        await message.answer("Ta'lim joyingiz va mutaxassisligingiz haqida yozing:", reply_markup=get_step_keyboard())
         await state.set_state(ResumeForm.education)
-    elif current_state == ResumeForm.experience:
-        await message.answer("Ko'nikmalaringizni kiriting:", reply_markup=get_step_keyboard())
+    elif current_state == ResumeForm.languages:
+        await message.answer("Kompyuter va dasturlash ko'nikmalaringizni kiriting:", reply_markup=get_step_keyboard())
         await state.set_state(ResumeForm.skills)
+    elif current_state == ResumeForm.exp_company:
+        await message.answer("Chet tillarini bilish darajangizni kiriting:", reply_markup=get_step_keyboard(can_skip=True))
+        await state.set_state(ResumeForm.languages)
+    elif current_state == ResumeForm.exp_position:
+        await message.answer("Ishlagan korxona yoki kompaniyangiz nomini kiriting:", reply_markup=get_step_keyboard(can_skip=True))
+        await state.set_state(ResumeForm.exp_company)
+    elif current_state == ResumeForm.exp_period:
+        await message.answer("Ushbu korxonada qaysi lavozimda ishlagansiz?", reply_markup=get_step_keyboard())
+        await state.set_state(ResumeForm.exp_position)
+    elif current_state == ResumeForm.exp_duties:
+        await message.answer("Ishlagan davringizni kiriting (Masalan: 2023-yil yanvar - Hozirgacha):", reply_markup=get_step_keyboard())
+        await state.set_state(ResumeForm.exp_period)
     elif current_state == ResumeForm.photo:
-        await message.answer("Ish tajribangiz haqida yozing:", reply_markup=get_step_keyboard(can_skip=True))
-        await state.set_state(ResumeForm.experience)
+        data = await state.get_data()
+        if data.get("has_experience"):
+            await message.answer("Majburiyat va yutuqlaringiz haqida yozing:", reply_markup=get_step_keyboard())
+            await state.set_state(ResumeForm.exp_duties)
+        else:
+            await message.answer("Ishlagan korxona yoki kompaniyangiz nomini kiriting:", reply_markup=get_step_keyboard(can_skip=True))
+            await state.set_state(ResumeForm.exp_company)
 
 # 1. Ism
 @router.message(ResumeForm.full_name)
 async def process_name(message: types.Message, state: FSMContext):
     text = message.text.strip()
     if len(text) < 3 or any(char.isdigit() for char in text):
-        await message.answer("❌ Noto'g'ri ism kiritdingiz! Faqat harflardan foydalaning va kamida 3 ta belgi bo'lsin.")
+        await message.answer("❌ Noto'g'ri ism kiritdingiz! Faqat harflardan foydalaning.")
         return
-
+    
     await state.update_data(full_name=escape(text))
+    await message.answer("Kasbingiz yoki mutaxassisligingizni kiriting:\n<i>(Masalan: Huquqshunos yoki Dasturchi)</i>", parse_mode="HTML", reply_markup=get_step_keyboard())
+    await state.set_state(ResumeForm.profession)
+
+# 2. Mutaxassislik / Kasb
+@router.message(ResumeForm.profession)
+async def process_profession(message: types.Message, state: FSMContext):
+    await state.update_data(profession=escape(message.text.strip()))
     await message.answer("Telefon raqamingizni kiriting yoki tugmani bosing:", reply_markup=get_phone_keyboard())
     await state.set_state(ResumeForm.phone)
 
-# 2. Telefon (Contact yoki Text)
+# 3. Telefon
 @router.message(ResumeForm.phone, F.contact | F.text)
 async def process_phone(message: types.Message, state: FSMContext):
     if message.contact:
@@ -115,58 +146,100 @@ async def process_phone(message: types.Message, state: FSMContext):
     await message.answer("Email manzilingizni kiriting:", reply_markup=get_step_keyboard())
     await state.set_state(ResumeForm.email)
 
-# 3. Email
+# 4. Email
 @router.message(ResumeForm.email)
 async def process_email(message: types.Message, state: FSMContext):
     email = message.text.strip()
     email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     if not re.match(email_regex, email):
-        await message.answer("❌ Noto'g'ri email formati! (Masalan: name@gmail.com)")
+        await message.answer("❌ Noto'g'ri email formati! (Masalan: info@cvbox.uz)")
         return
 
     await state.update_data(email=escape(email))
-    await message.answer("Ta'lim joyingiz va yo'nalishingiz haqida yozing:", reply_markup=get_step_keyboard())
+    await message.answer("Kutilayotgan oylik ish haqini kiriting (Masalan: 700 $):", reply_markup=get_step_keyboard(can_skip=True))
+    await state.set_state(ResumeForm.salary)
+
+# 5. Kutilgan ish haqi
+@router.message(ResumeForm.salary)
+async def process_salary(message: types.Message, state: FSMContext):
+    salary = None if message.text == "⏭ O'tkazib yuborish" else escape(message.text.strip())
+    await state.update_data(salary=salary)
+    await message.answer("Ta'lim joyingiz va mutaxassisligingiz haqida yozing:\n<i>(Masalan: Toshkent Davlat Yuridik Universiteti, Bakalavr)</i>", parse_mode="HTML", reply_markup=get_step_keyboard())
     await state.set_state(ResumeForm.education)
 
-# 4. Ta'lim
+# 6. Ta'lim
 @router.message(ResumeForm.education)
 async def process_education(message: types.Message, state: FSMContext):
-    if len(message.text.strip()) < 5:
-        await message.answer("❌ Iltimos, ta'lim joyingiz haqida batafsilroq yozing.")
-        return
-
     await state.update_data(education=escape(message.text.strip()))
-    await message.answer("Ko'nikmalaringizni kiriting (Masalan: Python, SQL, Git, Linux):", reply_markup=get_step_keyboard())
+    await message.answer("Kompyuter savodxonligi va ko'nikmalaringizni kiriting:\n<i>(Masalan: Microsoft Word, Python, 1C)</i>", parse_mode="HTML", reply_markup=get_step_keyboard())
     await state.set_state(ResumeForm.skills)
 
-# 5. Ko'nikmalar
+# 7. Ko'nikmalar
 @router.message(ResumeForm.skills)
 async def process_skills(message: types.Message, state: FSMContext):
     await state.update_data(skills=escape(message.text.strip()))
-    await message.answer(
-        "Ish tajribangiz haqida yozing (Aks holda 'O'tkazib yuborish' tugmasini bosing):",
-        reply_markup=get_step_keyboard(can_skip=True)
-    )
-    await state.set_state(ResumeForm.experience)
+    await message.answer("Chet tillarini bilish darajangizni kiriting:\n<i>(Masalan: Ingliz tili (B2), Turk tili (C1))</i>", parse_mode="HTML", reply_markup=get_step_keyboard(can_skip=True))
+    await state.set_state(ResumeForm.languages)
 
-# 6. Ish tajribasi
-@router.message(ResumeForm.experience)
-async def process_experience(message: types.Message, state: FSMContext):
-    exp_text = "Mavjud emas" if message.text == "⏭ O'tkazib yuborish" else message.text.strip()
-    await state.update_data(experience=escape(exp_text))
+# 8. Chet tillari (Bo'sh qolsa None saqlaydi)
+@router.message(ResumeForm.languages)
+async def process_languages(message: types.Message, state: FSMContext):
+    langs = None if message.text == "⏭ O'tkazib yuborish" else escape(message.text.strip())
+    await state.update_data(languages=langs)
     
     await message.answer(
-        "📸 <b>Rezyume uchun rasmingizni yuboring:</b>\n\n"
-        "<i>(Agar rasm qo'shishni xohlamasangiz, 'Rasmsiz davom etish' tugmasini bosing)</i>",
+        "<b>ISH TAJRIBASI</b>\n\nIshlagan korxona/kompaniyangiz nomini kiriting:\n<i>(Ish tajribangiz bo'lmasa, 'O'tkazib yuborish' tugmasini bosing)</i>",
+        parse_mode="HTML",
+        reply_markup=get_step_keyboard(can_skip=True)
+    )
+    await state.set_state(ResumeForm.exp_company)
+
+# 9. Ish tajribasi - Korxona
+@router.message(ResumeForm.exp_company)
+async def process_exp_company(message: types.Message, state: FSMContext):
+    if message.text == "⏭ O'tkazib yuborish":
+        await state.update_data(has_experience=False, exp_company=None, exp_position=None, exp_period=None, exp_duties=None)
+        await message.answer(
+            "📸 <b>Rezyume uchun rasmingizni yuboring:</b>",
+            parse_mode="HTML",
+            reply_markup=get_photo_keyboard()
+        )
+        await state.set_state(ResumeForm.photo)
+    else:
+        await state.update_data(has_experience=True, exp_company=escape(message.text.strip()))
+        await message.answer("Ushbu korxonada qaysi lavozimda ishlagansiz?\n<i>(Masalan: Bosh mutaxassis)</i>", parse_mode="HTML", reply_markup=get_step_keyboard())
+        await state.set_state(ResumeForm.exp_position)
+
+# 10. Ish tajribasi - Lavozim
+@router.message(ResumeForm.exp_position)
+async def process_exp_position(message: types.Message, state: FSMContext):
+    await state.update_data(exp_position=escape(message.text.strip()))
+    await message.answer("Ishlagan davringizni kiriting:\n<i>(Masalan: 2023-yil 20-yanvardan h.v.q.)</i>", parse_mode="HTML", reply_markup=get_step_keyboard())
+    await state.set_state(ResumeForm.exp_period)
+
+# 11. Ish tajribasi - Ish davri
+@router.message(ResumeForm.exp_period)
+async def process_exp_period(message: types.Message, state: FSMContext):
+    await state.update_data(exp_period=escape(message.text.strip()))
+    await message.answer("Majburiyatingiz va erishgan yutuqlaringiz haqida qisqacha yozing:", reply_markup=get_step_keyboard())
+    await state.set_state(ResumeForm.exp_duties)
+
+# 12. Ish tajribasi - Majburiyatlar
+@router.message(ResumeForm.exp_duties)
+async def process_exp_duties(message: types.Message, state: FSMContext):
+    await state.update_data(exp_duties=escape(message.text.strip()))
+    await message.answer(
+        "📸 <b>Rezyume uchun rasmingizni yuboring:</b>",
         parse_mode="HTML",
         reply_markup=get_photo_keyboard()
     )
     await state.set_state(ResumeForm.photo)
 
-# 7. Rasm qabul qilish va Tasdiqlash
+# 13. Rasm va Tasdiqlash
 @router.message(ResumeForm.photo, F.photo | (F.text == "⏭ Rasmsiz davom etish"))
 async def process_photo(message: types.Message, state: FSMContext, bot):
     photo_path = None
+
     if message.photo:
         photo = message.photo[-1]
         file_info = await bot.get_file(photo.file_id)
@@ -178,14 +251,21 @@ async def process_photo(message: types.Message, state: FSMContext, bot):
     await state.update_data(photo_path=photo_path)
     data = await state.get_data()
 
+    exp_info = "O'tkazib yuborildi ❌"
+    if data.get("has_experience"):
+        exp_info = f"\n  • 🏢 Korxona: {data.get('exp_company')}\n  • 💼 Lavozim: {data.get('exp_position')}\n  • 📅 Davr: {data.get('exp_period')}"
+
     summary = (
         "📋 <b>Kiritilgan ma'lumotlarni tekshiring:</b>\n\n"
         f"👤 <b>F.I.SH:</b> {data['full_name']}\n"
+        f"📌 <b>Kasbi:</b> {data.get('profession')}\n"
         f"📞 <b>Tel:</b> {data['phone']}\n"
         f"📧 <b>Email:</b> {data['email']}\n"
+        f"💰 <b>Kutilgan maosh:</b> {data.get('salary') or 'Kiritilmadi'}\n"
         f"🎓 <b>Ta'lim:</b> {data['education']}\n"
         f"🛠 <b>Ko'nikmalar:</b> {data['skills']}\n"
-        f"💼 <b>Tajriba:</b> {data['experience']}\n"
+        f"🌐 <b>Chet tillari:</b> {data.get('languages') or 'Kiritilmadi'}\n"
+        f"💼 <b>Ish tajribasi:</b> {exp_info}\n"
         f"🖼 <b>Rasm:</b> {'Mavjud ✅' if data.get('photo_path') else 'Mavjud emas ❌'}\n\n"
         "PDF faylni yarataylikmi?"
     )
