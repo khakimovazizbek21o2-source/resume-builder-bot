@@ -3,9 +3,11 @@ from aiogram.fsm.state import StatesGroup, State
 class ResumeForm(StatesGroup):
     full_name = State()
     profession = State()
+    location = State()     # Yashash manzili
     phone = State()
     email = State()
     salary = State()
+    about = State()        # Profil / Qisqacha o'zi haqida
     education = State()
     skills = State()
     languages = State()
