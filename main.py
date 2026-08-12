@@ -1,37 +1,37 @@
-import os
 import asyncio
 import logging
 from aiohttp import web
 from aiogram import Bot, Dispatcher
+from handlers import router
 
-# Botingizning mavjud importlari va sozlamalari (bot, dp, routerlar)
-# ...
+# Render taqdim etadigan PORT ni olish
+PORT = int(os.environ.get("PORT", 10000))
 
-# Render taqdim etadigan PORT'ni olish (bo'lmasa 8080)
-PORT = int(os.environ.get("PORT", 8080))
 
-# Render portni skaner qilganda javob qaytaruvchi funksiya
-async def handle_ping(request):
-    return web.Response(text="Bot is live and running!")
+# Render Health Check uchun oddiy HTTP web-server
+async def handle(request):
+  return web.Response(text="Bot is running!")
 
-async def start_dummy_server():
-    app = web.Application()
-    app.router.add_get("/", handle_ping)
-    app.router.add_get("/health", handle_ping)
-    
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", PORT)
-    await site.start()
-    logging.info(f"Dummy HTTP server started on port {PORT}")
 
 async def main():
-    # 1. Port muammosini hal qilish uchun web serverni ishga tushiramiz
-    await start_dummy_server()
-    
-    # 2. Telegram bot pollingini boshlaymiz
-    # await dp.start_polling(bot)  <-- Botingizning mavjud polling kodi
+  logging.basicConfig(level=logging.INFO)
+
+  bot = Bot(token="8668763966:AAGOSeYgbeWGwsv-nRFtfONwpPCSMvIAwLM")
+  dp = Dispatcher()
+  dp.include_router(router)
+
+  # 1. Aiohttp web serverini yaratish (Render Port bog'lanishi uchun)
+  app = web.Application()
+  app.router.add_get("/", handle)
+  runner = web.AppRunner(app)
+  await runner.setup()
+  site = web.TCPSite(runner, "0.0.0.0", PORT)
+  await site.start()
+  print(f"HTTP Server started on port {PORT}")
+
+  # 2. Telegram Bot pollingini ishga tushirish
+  await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    asyncio.run(main())
+  asyncio.run(main())
