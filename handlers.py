@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from html import escape
 
 from aiogram import Router, F, types
@@ -54,7 +55,6 @@ def get_confirm_keyboard():
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, state: FSMContext):
-    # /start bosilganda FSM holati to'liq tozalanadi
     await state.clear()
     await message.answer(
         "Xush kelibsiz! Rezyume yaratish uchun <b>To'liq ism-familiyangizni</b> kiriting:\n\n<i>Misol: Azizbek Xakimov</i>",
@@ -311,13 +311,14 @@ async def cb_generate_pdf(call: types.CallbackQuery, state: FSMContext):
     await call.message.edit_reply_markup(reply_markup=None)
     await call.message.answer("⏳ PDF rezyumengiz tayyorlanmoqda...")
     
-    pdf_path = f"resume_{call.from_user.id}.pdf"
+    # Noyob fayl nomi (har safar yangi pdf yaratilishi uchun)
+    pdf_path = f"resume_{call.from_user.id}_{int(time.time())}.pdf"
 
     try:
         # 1. PDF yaratish
         create_resume_pdf(data, pdf_path)
 
-        # 2. Faqat PDF faylni yuborish
+        # 2. PDF faylni yuborish
         doc = FSInputFile(pdf_path)
         await call.message.answer_document(
             document=doc,
@@ -325,7 +326,6 @@ async def cb_generate_pdf(call: types.CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
         
-        # Vaqtinchalik yuklangan profil rasmini o'chirish
         photo_p = data.get("photo_path")
         if photo_p and os.path.exists(photo_p):
             os.remove(photo_p)
@@ -336,7 +336,6 @@ async def cb_generate_pdf(call: types.CallbackQuery, state: FSMContext):
         await call.message.answer(f"❌ PDF yaratishda xatolik yuz berdi: {str(e)}")
 
     finally:
-        # Yaratilgan PDF faylni o'chirish
         if os.path.exists(pdf_path):
             os.remove(pdf_path)
     
