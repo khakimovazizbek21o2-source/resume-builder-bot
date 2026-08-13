@@ -1,10 +1,32 @@
 import os
+from PIL import Image, ImageDraw, ImageOps
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.graphics.shapes import Drawing, Circle
+
+def make_circular_image(image_path, output_path):
+    """Rasmni mukammal aylana (dumaloq) shaklga keltirib saqlash"""
+    try:
+        img = Image.open(image_path).convert("RGBA")
+        size = min(img.size)
+        
+        # Rasmni kvadrat shaklida qirqish
+        img = ImageOps.fit(img, (size, size), Image.Resampling.LANCZOS)
+        
+        # Maska yaratish
+        mask = Image.new('L', (size, size), 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, size, size), fill=255)
+        
+        img.putalpha(mask)
+        img.save(output_path, format="PNG")
+        return True
+    except Exception as e:
+        print(f"Rasmga ishlov berishda xatolik: {e}")
+        return False
 
 def create_resume_pdf(data: dict, output_path: str):
     doc = SimpleDocTemplate(
@@ -98,8 +120,10 @@ def create_resume_pdf(data: dict, output_path: str):
     right_contacts = f"<b>Maosh:</b> {salary if salary else 'Kelishiladi'}<br/><b>Manzil:</b> {location}"
 
     photo_path = data.get("photo_path")
-    if photo_path and os.path.exists(photo_path):
-        img_element = RLImage(photo_path, width=80, height=80)
+    circle_photo_path = "temp_photos/circle_temp.png"
+    
+    if photo_path and os.path.exists(photo_path) and make_circular_image(photo_path, circle_photo_path):
+        img_element = RLImage(circle_photo_path, width=80, height=80)
     else:
         d = Drawing(80, 80)
         d.add(Circle(40, 40, 38, fillColor=colors.HexColor('#E0E0E0'), strokeColor=colors.HexColor('#B0B0B0'), strokeWidth=1))
@@ -197,3 +221,7 @@ def create_resume_pdf(data: dict, output_path: str):
 
     story.append(main_table)
     doc.build(story)
+
+    # Vaqtinchalik aylanali rasmni o'chirish
+    if os.path.exists(circle_photo_path):
+        os.remove(circle_photo_path)
