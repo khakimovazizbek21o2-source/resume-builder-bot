@@ -54,6 +54,7 @@ def get_confirm_keyboard():
 
 @router.message(CommandStart())
 async def cmd_start(message: types.Message, state: FSMContext):
+    # /start bosilganda FSM holati to'liq tozalanadi
     await state.clear()
     await message.answer(
         "Xush kelibsiz! Rezyume yaratish uchun <b>To'liq ism-familiyangizni</b> kiriting:\n\n<i>Misol: Azizbek Xakimov</i>",
@@ -316,7 +317,7 @@ async def cb_generate_pdf(call: types.CallbackQuery, state: FSMContext):
         # 1. PDF yaratish
         create_resume_pdf(data, pdf_path)
 
-        # 2. PDF Faylning o'zini yuborish
+        # 2. Faqat PDF faylni yuborish
         doc = FSInputFile(pdf_path)
         await call.message.answer_document(
             document=doc,
@@ -324,7 +325,7 @@ async def cb_generate_pdf(call: types.CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
         
-        # Vaqtinchalik yuklangan profil rasmini to'zalash
+        # Vaqtinchalik yuklangan profil rasmini o'chirish
         photo_p = data.get("photo_path")
         if photo_p and os.path.exists(photo_p):
             os.remove(photo_p)
