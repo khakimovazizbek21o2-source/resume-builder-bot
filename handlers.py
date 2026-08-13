@@ -308,30 +308,15 @@ async def cb_generate_pdf(call: types.CallbackQuery, state: FSMContext):
         return
 
     await call.message.edit_reply_markup(reply_markup=None)
-    await call.message.answer("⏳ PDF rezyumengiz va prevyu tayyorlanmoqda...")
+    await call.message.answer("⏳ PDF rezyumengiz tayyorlanmoqda...")
     
     pdf_path = f"resume_{call.from_user.id}.pdf"
-    preview_img_path = f"preview_{call.from_user.id}.jpg"
 
     try:
         # 1. PDF yaratish
         create_resume_pdf(data, pdf_path)
-        
-        # 2. PDF dan prevyu rasm yaratish
-        images = convert_from_path(pdf_path, first_page=1, last_page=1)
-        if images:
-            images[0].save(preview_img_path, 'JPEG')
 
-        # 3. Avval Prevrak rasm yuborish
-        if os.path.exists(preview_img_path):
-            preview_file = FSInputFile(preview_img_path)
-            await call.message.answer_photo(
-                photo=preview_file,
-                caption="🖼 <b>Sizning rezyumengiz ko'rinishi (Prevyu)</b>",
-                parse_mode="HTML"
-            )
-
-        # 4. PDF Faylning o'zini yuborish
+        # 2. PDF Faylning o'zini yuborish
         doc = FSInputFile(pdf_path)
         await call.message.answer_document(
             document=doc,
@@ -339,7 +324,7 @@ async def cb_generate_pdf(call: types.CallbackQuery, state: FSMContext):
             parse_mode="HTML"
         )
         
-        # Profil rasmini to'zalash
+        # Vaqtinchalik yuklangan profil rasmini to'zalash
         photo_p = data.get("photo_path")
         if photo_p and os.path.exists(photo_p):
             os.remove(photo_p)
@@ -347,13 +332,11 @@ async def cb_generate_pdf(call: types.CallbackQuery, state: FSMContext):
         await state.clear()
 
     except Exception as e:
-        await call.message.answer(f"❌ PDF yoki prevyu yaratishda xatolik yuz berdi: {str(e)}")
+        await call.message.answer(f"❌ PDF yaratishda xatolik yuz berdi: {str(e)}")
 
     finally:
-        # Vaqtinchalik yaratilgan fayllarni o'chirish
+        # Yaratilgan PDF faylni o'chirish
         if os.path.exists(pdf_path):
             os.remove(pdf_path)
-        if os.path.exists(preview_img_path):
-            os.remove(preview_img_path)
     
     await call.answer()
