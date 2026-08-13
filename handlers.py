@@ -1,7 +1,7 @@
 import os
 import re
 from html import escape
-from pdf2image import convert_from_path
+
 from aiogram import Router, F, types
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
